@@ -14,12 +14,17 @@ Install the [OHF-Voice linux-voice-assistant](https://github.com/OHF-Voice/linux
 
 Drive the 3 APA102 LEDs of the ReSpeaker 2-Mic HAT from a custom Python script ([`src/script/led_ws.py`](src/script/led_ws.py)) connected to LVA's peripheral WebSocket API (`ws://localhost:6055`), with Google-Home-style light patterns for wake/listen/think/speak.
 
+**Step 4 — Custom wake word (optional)** → [doc/wake_word](doc/wake_word/README.md)
+
+Optionally train a new wake word on a Mac ([tutorial](doc/open_wake_word/tutorial.md)), then deploy it to the assistant. Note: LVA loads **TFLite** models only — the existing "Michel" model must be the `dnn`-head TFLite export to be selectable in the assistant.
+
 ## Summary
 
 ```
 Step 1: sound cards configured + set as defaults
 Step 2: linux-voice-assistant installed and running, connected to Home Assistant
 Step 3: HAT LEDs react to assistant events
+Step 4: (optional) custom wake word trained and deployed
 Final:  assistant discovered by Home Assistant, responds to the wake word, LEDs show its state
 ```
 
