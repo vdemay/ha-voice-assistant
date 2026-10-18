@@ -1,0 +1,9 @@
+{
+  "type": "openWakeWord",
+  "wake_word": "Michel",
+  "trained_languages": ["fr"],
+  "model": "michel.tflite",
+  "openWakeWord": {
+    "probability_cutoff": 0.9
+  }
+}

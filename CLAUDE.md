@@ -41,7 +41,7 @@ ha-voice-assistant/
 - **Software**: LVA cloned to `~/linux-voice-assistant` on the Pi, venv via `script/setup`, run with `python3 -m linux_voice_assistant --name "Michel"`; systemd service `linux-voice-assistant`.
 - **Home Assistant**: ESPHome integration → `<voice-pi-ip>:6053`. Requires a working Assist pipeline (Whisper/Piper) and entities exposed to Assist.
 - **LEDs**: this repo cloned on the Pi, venv in `src/script/`, run `python3 led_ws.py`; systemd service `voice-leds`. Requires SPI enabled and `liblgpio-dev swig` apt packages.
-- **Wake words**: LVA loads **TFLite only** (no ONNX) from the top level of its wake word dirs; custom models go in `~/linux-voice-assistant/local/external_wake_words/` (JSON config + `.tflite`). The `michel` model must be retrained with `model_type: dnn` to get a TFLite export; `oww/michel/michel.onnx` (conv_attention) is not loadable by LVA.
+- **Wake words**: LVA loads **TFLite only** (no ONNX) from the top level of its wake word dirs; custom models are copied from this repo (`oww/michel/michel.tflite` + `michel.json`) into `~/linux-voice-assistant/local/external_wake_words/`. The `michel` model must be retrained with `model_type: dnn` to get a TFLite export; `oww/michel/michel.onnx` (conv_attention) is not loadable by LVA. Do not point LVA's `--wake-word-dir` at `oww/michel/` directly (`michel_metrics.json` breaks scanning).
 
 ## Useful commands
 

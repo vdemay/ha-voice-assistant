@@ -60,20 +60,25 @@ mkdir -p ~/linux-voice-assistant/local/external_wake_words
 
 This is the recommended place for custom models — it survives `git pull` in the LVA repo.
 
-### 2. Copy the model
+### 2. Copy the model and config from this repository
 
-`michel.tflite` **does not exist yet in this repository** — `oww/michel/` only contains the ONNX export (conv_attention head). Produce it first with the `dnn` retraining + TFLite export described in [Part A](#part-a--optional-train-a-wake-word-on-a-mac), commit it to `oww/michel/`, then copy it to the Pi from your workstation (SSH access in `local/voice-pi.md`):
+Both files live in this repository, in [`oww/michel/`](../../oww/michel/):
+
+- `michel.tflite` — the TFLite model (the `dnn`-head export from [Part A](#part-a--optional-train-a-wake-word-on-a-mac); it **does not exist yet** until the retrain is committed)
+- `michel.json` — the wake word config referencing it
+
+This repo is already cloned on the Pi for the [LED step](../leds/README.md) at `~/ha-voice-assistant`. Update it and copy both files into the LVA external wake words directory:
 
 ```bash
-scp oww/michel/michel.tflite doume@<voice-pi-ip>:~/linux-voice-assistant/local/external_wake_words/
+cd ~/ha-voice-assistant
+git pull
+cp oww/michel/michel.tflite oww/michel/michel.json \
+   ~/linux-voice-assistant/local/external_wake_words/
 ```
 
-### 3. Create the JSON config
+`michel.json` for reference:
 
-On the Pi, create `michel.json` next to the model:
-
-```bash
-cat > ~/linux-voice-assistant/local/external_wake_words/michel.json << 'EOF'
+```json
 {
   "type": "openWakeWord",
   "wake_word": "Michel",
@@ -83,13 +88,14 @@ cat > ~/linux-voice-assistant/local/external_wake_words/michel.json << 'EOF'
     "probability_cutoff": 0.9
   }
 }
-EOF
 ```
 
-- `probability_cutoff` = the detection threshold. For the "Michel" evaluation (trained **without** ACAV100M), start at **0.9**; the eval curve showed **0.98** as optimal (97.9 % recall, ~25 false positives/hour). Lower it by 0.05 steps if the wake word is missed at distance; raise it if the assistant wakes on its own.
+- `probability_cutoff` = the detection threshold. For the "Michel" evaluation (trained **without** ACAV100M), start at **0.9**; the eval curve showed **0.98** as optimal (97.9 % recall, ~25 false positives/hour). Lower it by 0.05 steps if the wake word is missed at distance; raise it if the assistant wakes on its own. After changing it, re-copy the file and restart LVA.
 - `wake_word` is the display name shown in Home Assistant.
 
-### 4. Restart and select
+> Do **not** point LVA's `--wake-word-dir` directly at `oww/michel/`: that directory also contains `michel_metrics.json`, which LVA would try to load as a wake word config and fail. Copy the two files out as shown above.
+
+### 3. Restart and select
 
 ```bash
 sudo systemctl restart linux-voice-assistant
@@ -102,7 +108,7 @@ Then activate it, either:
 - **At runtime** (no restart needed after the initial registration): open the "Michel" device page in Home Assistant → Devices & services → ESPHome, and select the wake word in the dropdown, **or**
 - **At startup**: add `--wake-model michel` to the LVA command line / systemd `ExecStart`.
 
-### 5. Verify
+### 4. Verify
 
 Say the wake word. Expected chain:
 
