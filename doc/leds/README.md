@@ -43,12 +43,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Copy the script
+### 3. Copy the script and its requirements
 
-Copy `src/script/led_ws.py` from this repository onto the Pi (e.g. from your workstation, using the SSH access noted in `local/voice-pi.md`):
+Copy `src/script/led_ws.py` and `src/script/requirements.txt` from this repository onto the Pi (e.g. from your workstation, using the SSH access noted in `local/voice-pi.md`):
 
 ```bash
-scp src/script/led_ws.py doume@<voice-pi-ip>:~/voice-leds/led_ws.py
+scp src/script/led_ws.py src/script/requirements.txt doume@<voice-pi-ip>:~/voice-leds/
 ```
 
 ### 4. Install Python dependencies
@@ -56,9 +56,7 @@ scp src/script/led_ws.py doume@<voice-pi-ip>:~/voice-leds/led_ws.py
 ```bash
 cd ~/voice-leds
 source .venv/bin/activate
-pip install RPi.GPIO
-pip install websockets
-pip install apa102-pi
+pip install -r requirements.txt
 ```
 
 ### 5. Run

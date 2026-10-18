@@ -1,0 +1,3 @@
+RPi.GPIO
+websockets
+apa102-pi
