@@ -2,7 +2,7 @@
 
 LVA supports custom wake word models added as **TFLite** files plus a small JSON config. This page covers:
 
-1. **(Optional)** Training a new wake word on a Mac → [`doc/open_wake_word/tutorial.md`](../open_wake_word/tutorial.md)
+1. **(Optional)** Training a new wake word on a Mac → [`doc/train_a_custom_open_wake_word/tutorial.md`](../train_a_custom_open_wake_word/tutorial.md)
 2. **Deploying the existing "Michel" model** to the assistant so it becomes selectable as the wake word.
 
 ## Important: LVA only loads TFLite models
@@ -14,11 +14,11 @@ Both wake word engines inside LVA (`pymicro-wakeword` and `pyopen-wakeword`) run
 | `michel.onnx` (the only model in `oww/michel/` today) | ONNX, `conv_attention` head | No — loadable by standard openWakeWord runtimes (e.g. `wyoming-openwakeword`), but not by LVA |
 | a future `michel.tflite` | TFLite, `dnn` head | Yes — but this file **does not exist yet**: it must be created by retraining with the `dnn` head (see [Part A](#part-a--optional-train-a-wake-word-on-a-mac)) |
 
-The `conv_attention` head cannot be converted to TFLite (see the [tutorial](../open_wake_word/tutorial.md), Step 6). So to use "Michel" with this assistant, the model must be **retrained with `model_type: dnn`**, which is TFLite-exportable. The input contract is identical (16×96 speech embeddings), so the retrained model plugs into LVA's openWakeWord engine.
+The `conv_attention` head cannot be converted to TFLite (see the [tutorial](../train_a_custom_open_wake_word/tutorial.md), Step 6). So to use "Michel" with this assistant, the model must be **retrained with `model_type: dnn`**, which is TFLite-exportable. The input contract is identical (16×96 speech embeddings), so the retrained model plugs into LVA's openWakeWord engine.
 
 ## Part A — (Optional) Train a wake word on a Mac
 
-Follow the full training tutorial: **[doc/open_wake_word/tutorial.md](../open_wake_word/tutorial.md)** (based on the actual "Michel" training run with [livekit-wakeword](https://github.com/livekit/livekit-wakeword), ~2.5 h on a Mac CPU).
+Follow the full training tutorial: **[doc/train_a_custom_open_wake_word/tutorial.md](../train_a_custom_open_wake_word/tutorial.md)** (based on the actual "Michel" training run with [livekit-wakeword](https://github.com/livekit/livekit-wakeword), ~2.5 h on a Mac CPU).
 
 For a model destined for LVA, apply **one change** to the config in Step 2 of the tutorial:
 

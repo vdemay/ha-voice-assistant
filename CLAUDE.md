@@ -18,7 +18,7 @@ ha-voice-assistant/
 │   │   └── home-assistant.md     # Step 2: connect LVA to Home Assistant (ESPHome integration, port 6053)
 │   ├── leds/README.md            # Step 3: LED script setup (clone repo, venv in src/script, run, systemd)
 │   ├── wake_word/README.md      # Step 4 (optional): train a wake word on a Mac + deploy TFLite model to LVA
-│   └── open_wake_word/tutorial.md  # Training the custom "michel" wake word (livekit-wakeword pipeline)
+│   └── train_a_custom_open_wake_word/tutorial.md  # Training the custom "michel" wake word (livekit-wakeword pipeline)
 ├── src/
 │   └── script/
 │       ├── led_ws.py             # LED controller: listens to LVA WebSocket events, drives 3 APA102 pixels

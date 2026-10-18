@@ -16,7 +16,7 @@ Drive the 3 APA102 LEDs of the ReSpeaker 2-Mic HAT from a custom Python script (
 
 **Step 4 — Custom wake word (optional)** → [doc/wake_word](doc/wake_word/README.md)
 
-Optionally train a new wake word on a Mac ([tutorial](doc/open_wake_word/tutorial.md)), then deploy it to the assistant. Note: LVA loads **TFLite** models only — the existing "Michel" model must be the `dnn`-head TFLite export to be selectable in the assistant.
+Optionally train a new wake word on a Mac ([tutorial](doc/train_a_custom_open_wake_word/tutorial.md)), then deploy it to the assistant. Note: LVA loads **TFLite** models only — the existing "Michel" model must be the `dnn`-head TFLite export to be selectable in the assistant.
 
 ## Summary
 

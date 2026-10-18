@@ -82,7 +82,7 @@ Useful options (full list in the [upstream README](https://github.com/OHF-Voice/
 
 ### Custom wake word (openWakeWord)
 
-A custom-trained openWakeWord model ("michel") lives in [`oww/michel`](../../oww/michel) — see the [training tutorial](../open_wake_word/tutorial.md). To use custom wake word models, pass the directory containing the model and its JSON config:
+A custom-trained openWakeWord model ("michel") lives in [`oww/michel`](../../oww/michel) — see the [training tutorial](../train_a_custom_open_wake_word/tutorial.md). To use custom wake word models, pass the directory containing the model and its JSON config:
 
 ```bash
 python3 -m linux_voice_assistant --name "Michel" --wake-word-dir /path/to/wakewords
