@@ -316,6 +316,8 @@ Expected output: `output (1, 1)` and a score between 0 and 1. The file is ~97 KB
 - **INT8 quantization** (`quantize_onnx`): the file is produced, but onnxruntime CPU refuses to load it (`Could not find an implementation for ConvInteger`). For a 97 KB model, quantization is pointless anyway — stay FP32.
 - **TFLite**: not supported for the `conv_attention` head (the attention block and LSTM do not convert to builtin TFLite ops). Only the `dnn` head is TFLite-exportable. → On a Pi, use **ONNX Runtime**; TFLite is not needed.
 
+> **Deploying to linux-voice-assistant (LVA)?** LVA only loads **TFLite** models (both its wake word engines run models through the TensorFlow Lite C API). The `conv_attention` ONNX cannot be converted — you must retrain with `model_type: dnn` and export with `--format tflite` (requires the `tflite` extra: `pip install "livekit-wakeword[tflite]"`). Since the extracted features do not depend on the classifier head, you can reuse the existing features and re-run only `train`. See [`doc/wake_word/README.md`](../wake_word/README.md) for the full deployment procedure.
+
 ### numpy version conflict (single-command pipeline)
 
 If you chain everything in one venv: generation/training want `numpy<2` (and **without** `ml-dtypes`), while export wants `numpy>=2` + `ml-dtypes`. Hence the sequence used in `run_full_pipeline.sh`:
@@ -392,7 +394,7 @@ On the Pi:
 1. Copy `michel.onnx` to the card (e.g. `/home/pi/wakewords/michel.onnx`).
 2. The classifier consumes **embeddings** (16×96), not raw audio: the runtime must include the two bundled base models (mel + embeddings). Two options:
    - **livekit-wakeword as runtime** (`pip install livekit-wakeword` on the Pi, then `WakeWordModel` as in Step 8);
-   - **openWakeWord**: the (1, 16, 96) input contract is the same as openWakeWord custom models — drop the ONNX into the models folder and reference it in the config (e.g. a `wyoming-openwakeword` satellite with `--custom-model-dir`).
+   - **openWakeWord**: the (1, 16, 96) input contract is the same as openWakeWord custom models — drop the ONNX into the models folder and reference it in the config (e.g. a `wyoming-openwakeword` satellite with `--custom-model-dir`). Note: this applies to standard openWakeWord runtimes only — **LVA needs the TFLite export** (see the note in Step 6 and [`doc/wake_word/README.md`](../wake_word/README.md)).
 3. Set the **threshold** (Step 7) in the satellite config.
 
 Quick check on the Pi:

@@ -11,8 +11,8 @@ Both wake word engines inside LVA (`pymicro-wakeword` and `pyopen-wakeword`) run
 
 | Model | Format | Usable with LVA? |
 |-------|--------|------------------|
-| `michel.onnx` (current) | ONNX, `conv_attention` head | No — loadable by standard openWakeWord runtimes (e.g. `wyoming-openwakeword`), but not by LVA |
-| `michel.tflite` | TFLite, `dnn` head | Yes — this is what LVA needs |
+| `michel.onnx` (the only model in `oww/michel/` today) | ONNX, `conv_attention` head | No — loadable by standard openWakeWord runtimes (e.g. `wyoming-openwakeword`), but not by LVA |
+| a future `michel.tflite` | TFLite, `dnn` head | Yes — but this file **does not exist yet**: it must be created by retraining with the `dnn` head (see [Part A](#part-a--optional-train-a-wake-word-on-a-mac)) |
 
 The `conv_attention` head cannot be converted to TFLite (see the [tutorial](../open_wake_word/tutorial.md), Step 6). So to use "Michel" with this assistant, the model must be **retrained with `model_type: dnn`**, which is TFLite-exportable. The input contract is identical (16×96 speech embeddings), so the retrained model plugs into LVA's openWakeWord engine.
 
@@ -28,7 +28,23 @@ model:
   model_size: small
 ```
 
-Everything else is unchanged. At the end of training you have the model files; keep the `.tflite` export — commit it to this repository under `oww/<name>/` for safekeeping (like `oww/michel/`).
+Everything else is unchanged. Since the extracted features do not depend on the classifier head, you can skip the `generate`/`augment` steps and only re-run `train` on the existing features, then export the TFLite model:
+
+```bash
+# install the optional TFLite extra (onnx2tf + TensorFlow)
+pip install "livekit-wakeword[tflite]"        # or: uv sync --extra tflite
+
+# retrain with the dnn head (~2.5 h)
+.venv/bin/python -m livekit.wakeword train configs/michel.yaml
+
+# export as TFLite (ONNX is exported first, then converted ONNX → TFLite)
+.venv/bin/python -m livekit.wakeword export configs/michel.yaml --format tflite
+# → output_michel/michel/michel.tflite
+```
+
+If the export fails with the opset error described in the tutorial (Step 6), apply the same workaround (export with opset 17) — the TFLite exporter runs the ONNX export first.
+
+Commit the resulting `.tflite` to this repository under `oww/<name>/` for safekeeping (like `oww/michel/`), then continue with Part B.
 
 The evaluation step (Step 7 of the tutorial) gives you the detection threshold to use at runtime — note it down, it goes into the JSON config below.
 
@@ -46,7 +62,7 @@ This is the recommended place for custom models — it survives `git pull` in th
 
 ### 2. Copy the model
 
-From your workstation (SSH access in `local/voice-pi.md`):
+`michel.tflite` **does not exist yet in this repository** — `oww/michel/` only contains the ONNX export (conv_attention head). Produce it first with the `dnn` retraining + TFLite export described in [Part A](#part-a--optional-train-a-wake-word-on-a-mac), commit it to `oww/michel/`, then copy it to the Pi from your workstation (SSH access in `local/voice-pi.md`):
 
 ```bash
 scp oww/michel/michel.tflite doume@<voice-pi-ip>:~/linux-voice-assistant/local/external_wake_words/
