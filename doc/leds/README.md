@@ -32,39 +32,30 @@ sudo apt update
 sudo apt install -y liblgpio-dev swig
 ```
 
-### 2. Create a folder with its own virtual environment
+### 2. Clone this repository and create a virtual environment
 
-The script runs in its own venv, separate from LVA:
+The script runs directly from a clone of this repository, in its own venv (separate from LVA):
 
 ```bash
-mkdir -p ~/voice-leds
-cd ~/voice-leds
+cd ~
+git clone https://github.com/vdemay/ha-voice-assistant
+cd ha-voice-assistant/src/script
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Copy the script and its requirements
-
-Copy `src/script/led_ws.py` and `src/script/requirements.txt` from this repository onto the Pi (e.g. from your workstation, using the SSH access noted in `local/voice-pi.md`):
+### 3. Install Python dependencies
 
 ```bash
-scp src/script/led_ws.py src/script/requirements.txt doume@<voice-pi-ip>:~/voice-leds/
-```
-
-### 4. Install Python dependencies
-
-```bash
-cd ~/voice-leds
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5. Run
+### 4. Run
 
 Keep LVA running in another session (or via its systemd service), then:
 
 ```bash
-cd ~/voice-leds
+cd ~/ha-voice-assistant/src/script
 source .venv/bin/activate
 python3 led_ws.py
 ```
@@ -99,8 +90,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=doume
-WorkingDirectory=/home/doume/voice-leds
-ExecStart=/home/doume/voice-leds/.venv/bin/python led_ws.py
+WorkingDirectory=/home/doume/ha-voice-assistant/src/script
+ExecStart=/home/doume/ha-voice-assistant/src/script/.venv/bin/python led_ws.py
 Restart=always
 RestartSec=5
 
