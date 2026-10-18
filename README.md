@@ -46,6 +46,7 @@ Start with **[SETUP.md](SETUP.md)** for the full tutorial:
 
 1. **[Sound cards](doc/sound_cards/README.md)** — configure the USB mic and ReSpeaker HAT under PipeWire, set them as defaults.
 2. **[Software installation](doc/linux_voice_assistant/README.md)** — install and run [linux-voice-assistant](https://github.com/OHF-Voice/linux-voice-assistant) on the Pi, then **[connect it to Home Assistant](doc/linux_voice_assistant/home-assistant.md)**.
+3. **[HAT LEDs](doc/leds/README.md)** — drive the ReSpeaker 2-Mic HAT's 3 APA102 LEDs from the LVA peripheral WebSocket API with [`src/script/led_ws.py`](src/script/led_ws.py).
 
 Also in this repo:
 
