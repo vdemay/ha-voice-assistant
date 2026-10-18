@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 LED light pattern like Google Home
-Contrôlé par les événements WebSocket de linux-voice-assistant
+Controlled by linux-voice-assistant WebSocket events
 """
 
 import asyncio
@@ -130,10 +130,10 @@ pixels = Pixels()
 
 async def main():
     uri = "ws://localhost:6055"
-    print("Connexion à LVA…")
+    print("Connecting to LVA…")
 
     async with websockets.connect(uri) as ws:
-        print("Connecté")
+        print("Connected")
         async for raw in ws:
             msg = json.loads(raw)
             event = msg.get("event")
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Arrêt")
+        print("Stopped")
     finally:
         pixels.off()
         time.sleep(0.2)

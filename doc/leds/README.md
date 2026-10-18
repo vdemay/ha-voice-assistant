@@ -72,8 +72,8 @@ python3 led_ws.py
 Expected output:
 
 ```
-Connexion à LVA…
-Connecté
+Connecting to LVA…
+Connected
 → snapshot
 → wake_word_detected
 → listening
