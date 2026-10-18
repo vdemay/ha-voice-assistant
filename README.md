@@ -2,18 +2,18 @@
 
 Documentation for building a voice assistant on a dedicated Raspberry Pi that controls a **separate** Home Assistant instance running on another Pi.
 
-The voice-assistant Pi does not run Home Assistant itself. It captures audio, streams it over the network to the Home Assistant Pi, and plays back the spoken response. All intent processing and entity control happen in Home Assistant.
+The voice-assistant Pi does not run Home Assistant itself. It runs [linux-voice-assistant](https://github.com/OHF-Voice/linux-voice-assistant), which does on-device wake word detection and audio capture/playback, and talks to Home Assistant over its ESPHome-compatible API. All speech-to-text, intent processing, and entity control happen in Home Assistant.
 
 ## Architecture
 
 ```
-+---------------------+        network (local LAN)       +--------------------------+
-|  Voice Assistant Pi |  mic audio / Wyoming protocol   |   Home Assistant Pi      |
++---------------------+     network (local LAN)          +--------------------------+
+|  Voice Assistant Pi |  mic audio / ESPHome API:6053    |   Home Assistant Pi      |
 |                     | ----------------------------->   |                          |
 |  - Microphone (USB) |                                 |  - Assist pipeline       |
-|  - Speaker (jack/USB)|  <----------------------------- |  - Speech-to-Text (STT)  |
-|  - Wake word         |        TTS audio reply          |  - Intent recognition    |
-|  - LED/button (opt.) |                                 |  - Text-to-Speech (TTS)  |
+|  - Speaker (HAT/USB) |  <----------------------------- |  - Speech-to-Text        |
+|  - Wake word (local) |        TTS audio reply          |  - Intent recognition    |
+|  - LED/button (opt.) |                                 |  - Text-to-Speech        |
 +---------------------+                                 |  - Zigbee/Z-Wave/etc.    |
                                                         +--------------------------+
 ```
@@ -29,8 +29,8 @@ The voice-assistant Pi does not run Home Assistant itself. It captures audio, st
 | Component | Notes |
 |-----------|-------|
 | Raspberry Pi (Zero 2 W / 3 / 4) | The satellite does little processing — any model works |
-| USB microphone | Or a microphone HAT (e.g. ReSpeaker 2-Mic) |
-| Speaker | 3.5mm jack, USB, or HAT output |
+| USB microphone | Input — see [sound cards](doc/sound_cards/README.md) |
+| ReSpeaker 2-Mic HAT | Output (speaker jack) — see [sound cards](doc/sound_cards/README.md) |
 | microSD card | 8 GB minimum |
 | (optional) LED + button | Status/ mute control, e.g. via GPIO |
 
@@ -42,19 +42,21 @@ The voice-assistant Pi does not run Home Assistant itself. It captures audio, st
 | microSD card | 32 GB minimum, or SSD via USB for better Whisper performance |
 | (existing) radio | Zigbee/Z-Wave stick if you already have one — no change needed |
 
-## Setup overview
+Start with **[SETUP.md](SETUP.md)** for the full tutorial:
 
-1. **[Prepare the voice assistant Pi](docs/voice-pi-setup.md)** — flash the OS, configure audio in/out, install the satellite software.
-2. **[Configure Home Assistant](docs/home-assistant-setup.md)** — enable the Assist pipeline, install Whisper and Piper add-ons, expose entities to Assist.
-3. **[Connect the two](docs/network-setup.md)** — point the satellite at your Home Assistant URL, handle discovery/authentication, and open the Wyoming ports.
-4. **[Tune wake word and pipeline](docs/pipeline-tuning.md)** — pick/ train a wake word, choose STT/TTS models sized for your hardware.
+1. **[Sound cards](doc/sound_cards/README.md)** — configure the USB mic and ReSpeaker HAT under PipeWire, set them as defaults.
+2. **[Software installation](doc/linux_voice_assistant/README.md)** — install and run [linux-voice-assistant](https://github.com/OHF-Voice/linux-voice-assistant) on the Pi, then **[connect it to Home Assistant](doc/linux_voice_assistant/home-assistant.md)**.
+
+Also in this repo:
+
+- **[doc/open_wake_word/tutorial.md](doc/open_wake_word/tutorial.md)** — training a custom wake word ("michel", model in [`oww/michel`](oww/michel)).
+- **`local/`** — private setup notes (IPs, SSH), git-ignored.
 
 ## Network requirements
 
 - Both Pis must be on the same LAN, or connected via a routable VPN (e.g. Tailscale/WireGuard).
-- Home Assistant must be reachable over `http://homeassistant.local:8123` (or your configured URL).
-- Wyoming protocol ports (default `10400` and up, one per satellite service) must be reachable from the voice Pi.
-- mDNS/Avahi must not be blocked if you rely on `.local` hostnames.
+- Home Assistant must reach the voice Pi's ESPHome API on TCP port `6053` (default).
+- mDNS/Avahi must not be blocked if you rely on `.local` hostnames and automatic discovery.
 
 ## Status
 
@@ -68,7 +70,7 @@ The voice-assistant Pi does not run Home Assistant itself. It captures audio, st
 
 ## References
 
+- [linux-voice-assistant](https://github.com/OHF-Voice/linux-voice-assistant)
 - [Home Assistant Voice](https://www.home-assistant.io/voice_control/)
-- [Wyoming protocol](https://www.home-assistant.io/voice_control/remote_wyoming/)
 - [Whisper add-on (STT)](https://www.home-assistant.io/integrations/whisper/)
 - [Piper add-on (TTS)](https://www.home-assistant.io/integrations/piper/)
