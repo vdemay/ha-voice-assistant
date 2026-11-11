@@ -572,7 +572,8 @@ script:
           id(awake_frame) = f;
           id(glance_pos) = i + 1;
       - component.update: main_display
-      - delay: 450ms   // slow, one frame per tick
+      # slow: one frame per tick
+      - delay: 450ms
       - if:
           condition:
             lambda: return id(glance_pos) < 2 * id(glance_depth);
