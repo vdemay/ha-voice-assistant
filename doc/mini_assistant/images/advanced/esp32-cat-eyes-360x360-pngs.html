@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Cat Eyes - 360x360 PNGs</title>
+<style>
+  :root { font-family: Inter, system-ui, sans-serif; color: #e5e7eb; background: #0b0f19; }
+  body { margin: 0; padding: 32px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: #9ca3af; margin: 0 0 24px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 14px; text-align: center; }
+  .card canvas { border-radius: 8px; width: 180px; height: 180px; }
+  .meta { display: flex; justify-content: space-between; margin: 10px 2px 8px; font-size: 13px; }
+  .fname { font-weight: 600; }
+  .dim { color: #6b7280; }
+  .btn { display: inline-block; padding: 8px 14px; border-radius: 8px; background: #2563eb; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .btn:hover { background: #1d4ed8; }
+  .anim { margin-top: 32px; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; text-align: center; }
+  .anim h2 { font-size: 16px; margin: 0 0 12px; }
+  .anim canvas { width: 220px; height: 220px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>ESP32 Cat Eyes &mdash; 360&times;360 PNG assets</h1>
+<p class="sub">Black background, white eyes only, with a subtle cool glow (shadowBlur) around the white elements for a robotic look. Each Download button saves a real 360&times;360 PNG file. The sleep state (idle_sleep_f0&ndash;f3) is a continuous 4-frame loop at ~5 fps. The idle glance frames (idle_f0&ndash;f3) are NOT a loop: pupils rest centered on idle_f0 most of the time; every few seconds play 2&ndash;3 frames slowly toward one side, then drift back to idle_f0.</p>
+<div class="grid" id="grid"></div>
+<div class="anim">
+  <h2>idle_sleep animation preview (frames f0 &rarr; f3, looping)</h2>
+  <canvas id="sleepAnim" width="360" height="360"></canvas>
+</div>
+<div class="anim">
+  <h2>idle glance preview &mdash; pupils rest centered; every few seconds a slow 2&ndash;3 frame glance to one side, then back to center</h2>
+  <canvas id="idleAnim" width="360" height="360"></canvas>
+</div>
+<div class="anim">
+  <h2>State transition preview &mdash; hard switch between states (no crossfade)</h2>
+  <canvas id="stateAnim" width="360" height="360" style="width:260px;height:260px;border-radius:8px;"></canvas>
+  <div style="margin-top:10px;">
+    <button class="btn" id="pauseBtn">&#10074;&#10074; Pause</button>
+    <span id="stateLabel" style="margin-left:10px;font-size:13px;color:#9ca3af;"></span>
+  </div>
+</div>
+<script>
+const W = 360, H = 360, WHITE = '#ffffff', BLACK = '#000000';
+
+// --- drawing primitives (same geometry as the generated PNG assets) ---
+function prep(ctx) {
+  ctx.fillStyle = BLACK; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = WHITE; ctx.fillStyle = WHITE;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // cool glow around the white elements (robotic look)
+  ctx.shadowColor = 'rgba(200, 230, 255, 0.70)';
+  ctx.shadowBlur = 26;
+}
+// subtle robotic shading: white at top fading to cool gray at the bottom
+function eyeGradient(ctx, cy, r) {
+  const g = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.55, '#f2f5f8');
+  g.addColorStop(1, '#b7c1cc');
+  return g;
+}
+function circle(ctx, cx, cy, r) {
+  ctx.fillStyle = eyeGradient(ctx, cy, r);
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  // small glossy highlight, top-left
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.ellipse(cx - r * 0.38, cy - r * 0.42, r * 0.16, r * 0.10, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = WHITE;
+}
+function ellipse(ctx, cx, cy, rx, ry) {
+  ctx.fillStyle = eyeGradient(ctx, cy, Math.max(rx, ry));
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = WHITE;
+}
+function arcStroke(ctx, cx, cy, r, thick, a0deg, a1deg) {
+  const d2r = Math.PI / 180;
+  ctx.beginPath(); ctx.arc(cx, cy, r, a0deg * d2r, a1deg * d2r);
+  ctx.lineWidth = thick; ctx.stroke();
+}
+function line(ctx, x0, y0, x1, y1, thick) {
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+  ctx.lineWidth = thick; ctx.stroke();
+}
+function zGlyph(ctx, x, y, size, thick) {
+  line(ctx, x, y, x + size, y, thick);
+  line(ctx, x + size, y, x, y + size * 0.9, thick);
+  line(ctx, x, y + size * 0.9, x + size, y + size * 0.9, thick);
+}
+// small microphone symbol (capsule + stand), centered above the eyes
+function mic(ctx) {
+  ctx.lineWidth = 7;
+  // capsule body
+  ctx.beginPath();
+  ctx.moveTo(180, 52); ctx.lineTo(180, 74);
+  ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
+  // stand arc
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(180, 74, 16, 0, Math.PI); ctx.stroke();
+  // stem + base
+  line(ctx, 180, 90, 180, 98, 6);
+  line(ctx, 168, 100, 192, 100, 6);
+}
+// speech bubble with typing dots, centered above the eyes
+function speechBubble(ctx) {
+  // bubble
+  ctx.beginPath();
+  const bx = 146, by = 40, bw = 68, bh = 36, r = 10;
+  ctx.moveTo(bx + r, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+  ctx.arcTo(bx, by + bh, bx, by, r);
+  ctx.arcTo(bx, by, bx + bw, by, r);
+  ctx.closePath(); ctx.fill();
+  // tail pointing down between the eyes
+  ctx.beginPath();
+  ctx.moveTo(172, 74); ctx.lineTo(188, 74); ctx.lineTo(180, 92);
+  ctx.closePath(); ctx.fill();
+  // three typing dots
+  ctx.fillStyle = BLACK;
+  ctx.shadowBlur = 0;   // no dark halo over the white bubble
+  for (const dx of [-16, 0, 16]) {
+    ctx.beginPath(); ctx.arc(180 + dx, 58, 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.shadowBlur = 26;
+  ctx.fillStyle = WHITE;
+}
+// question mark symbol, centered above the eyes (real font glyph)
+function questionMark(ctx) {
+  ctx.font = '700 64px Arial, Helvetica, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = WHITE;
+  ctx.fillText('?', 180, 86);
+  ctx.fillStyle = WHITE;
+}
+// black cat slit pupil: almond/lemon shape with pointed top and bottom
+function pupil(ctx, cx, cy, r, ox, oy) {
+  const px = cx + ox, py = cy + oy;
+  ctx.fillStyle = BLACK;
+  ctx.shadowBlur = 0;   // no dark halo over the white eye (glow is 26 in prep)
+  ctx.beginPath();
+  ctx.moveTo(px, py - r * 1.15);                              // top point
+  ctx.bezierCurveTo(px + r * 0.75, py - r * 0.5, px + r * 0.75, py + r * 0.5, px, py + r * 1.15); // right side
+  ctx.bezierCurveTo(px - r * 0.75, py + r * 0.5, px - r * 0.75, py - r * 0.5, px, py - r * 1.15); // left side
+  ctx.closePath(); ctx.fill();
+  // small light glint for liveliness
+  ctx.shadowBlur = 26;  // glint glows again
+  ctx.fillStyle = WHITE;
+  ctx.beginPath(); ctx.arc(px + r * 0.3, py - r * 0.45, r * 0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = WHITE;
+}
+// small cat nose (rounded triangle) + "w" mouth
+function nose(ctx, withMouth = true) {
+  ctx.beginPath();
+  ctx.moveTo(167, 256); ctx.lineTo(193, 256); ctx.lineTo(180, 272);
+  ctx.closePath(); ctx.fill();
+  if (withMouth) {
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(167, 274, 12, -0.15, Math.PI + 0.15); ctx.stroke();
+    ctx.beginPath(); ctx.arc(193, 274, 12, -0.15, Math.PI + 0.15); ctx.stroke();
+  }
+}
+
+// --- state draw functions ---
+const draws = {
+  idle(ctx) {
+    circle(ctx, 112, 175, 56); circle(ctx, 248, 175, 56);
+    pupil(ctx, 112, 175, 26, 0, 6); pupil(ctx, 248, 175, 26, 0, 6);
+    nose(ctx);
+  },
+  // idle animation: eyes fixed, pupils glance right/left lightly
+  idle_f0(ctx) { idleEyes(ctx, 0); },
+  idle_f1(ctx) { idleEyes(ctx, 16); },
+  idle_f2(ctx) { idleEyes(ctx, 0); },
+  idle_f3(ctx) { idleEyes(ctx, -16); },
+  listening(ctx) {
+    ellipse(ctx, 112, 175, 54, 60); ellipse(ctx, 248, 175, 54, 60);
+    pupil(ctx, 112, 175, 24, 0, -18); pupil(ctx, 248, 175, 24, 0, -18);
+    mic(ctx);
+    nose(ctx);
+  },
+  replying(ctx) {
+    arcStroke(ctx, 112, 165, 48, 16, 25, 155); arcStroke(ctx, 248, 165, 48, 16, 25, 155);
+    speechBubble(ctx);
+    nose(ctx);
+  },
+  error(ctx) {
+    ctx.strokeStyle = '#ff4444';
+    ctx.shadowColor = 'rgba(255, 68, 68, 0.75)';   // red glow for the error marks
+    for (const cx of [112, 248]) {
+      line(ctx, cx - 34, 141, cx + 34, 209, 15);
+      line(ctx, cx + 34, 141, cx - 34, 209, 15);
+    }
+    ctx.strokeStyle = WHITE;
+    ctx.fillStyle = '#ff4444';
+    nose(ctx, false);
+    ctx.fillStyle = WHITE;
+  },
+  thinking(ctx) {
+    circle(ctx, 105, 180, 50); circle(ctx, 252, 155, 58);
+    pupil(ctx, 105, 180, 23, 14, -12); pupil(ctx, 252, 155, 25, 16, -14);
+    questionMark(ctx);
+    nose(ctx);
+  },
+  loading(ctx) {
+    arcStroke(ctx, 112, 180, 46, 16, -230, 40); arcStroke(ctx, 248, 180, 46, 16, -50, 220);
+    pupil(ctx, 112, 180, 12, 0, 0); pupil(ctx, 248, 180, 12, 0, 0);
+    nose(ctx);
+  },
+  idle_sleep_f0(ctx) { sleepBase(ctx); zGlyph(ctx, 258, 96, 16, Math.max(3, 16 * 0.16)); nose(ctx, false); },
+  idle_sleep_f1(ctx) { sleepBase(ctx); zGlyph(ctx, 262, 82, 20, Math.max(3, 20 * 0.16)); nose(ctx, false); },
+  idle_sleep_f2(ctx) { sleepBase(ctx); zGlyph(ctx, 266, 66, 24, Math.max(3, 24 * 0.16)); nose(ctx, false); },
+  idle_sleep_f3(ctx) { sleepBase(ctx); zGlyph(ctx, 270, 52, 28, Math.max(3, 28 * 0.16)); nose(ctx, false); },
+};
+function sleepBase(ctx) {
+  arcStroke(ctx, 112, 172, 44, 15, 30, 150);
+  arcStroke(ctx, 248, 172, 44, 15, 30, 150);
+}
+function idleEyes(ctx, ox) {
+  circle(ctx, 112, 175, 56); circle(ctx, 248, 175, 56);
+  pupil(ctx, 112, 175, 26, ox, 6); pupil(ctx, 248, 175, 26, ox, 6);
+  nose(ctx);
+}
+
+// --- build gallery ---
+const grid = document.getElementById('grid');
+const order = ['idle', 'idle_f0', 'idle_f1', 'idle_f2', 'idle_f3', 'idle_sleep_f0', 'idle_sleep_f1', 'idle_sleep_f2', 'idle_sleep_f3', 'listening', 'loading', 'replying', 'thinking', 'error'];
+for (const name of order) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  prep(ctx); draws[name](ctx);
+  card.appendChild(cv);
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.innerHTML = '<span class="fname">' + name + '.png</span><span class="dim">360 &times; 360</span>';
+  card.appendChild(meta);
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.textContent = '\u2B07 Download';
+  btn.onclick = () => {
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const octx = out.getContext('2d');
+    prep(octx); draws[name](octx);
+    const a = document.createElement('a');
+    a.href = out.toDataURL('image/png');
+    a.download = name + '.png';
+    a.click();
+  };
+  card.appendChild(btn);
+  grid.appendChild(card);
+}
+
+// --- sleep animation preview ---
+const animCv = document.getElementById('sleepAnim');
+const actx = animCv.getContext('2d');
+let fi = 0;
+setInterval(() => {
+  prep(actx);
+  draws['idle_sleep_f' + fi](actx);
+  fi = (fi + 1) % 4;
+}, 200);
+
+// --- idle glance animation preview ---
+// Behavior: rest on f0 (pupils centered). Every ~2s, 30% chance (if not already
+// glancing): play a slow glance — 2 or 3 frames toward a random side, then
+// back to f0. Frame time 450 ms (slow), so a glance takes ~2-3 s.
+const idleCv = document.getElementById('idleAnim');
+const ictx = idleCv.getContext('2d');
+let glancing = false;
+function showIdleFrame(i) { prep(ictx); draws['idle_f' + i](ictx); }
+function glance() {
+  glancing = true;
+  const right = Math.random() < 0.5;
+  const depth = 2 + Math.floor(Math.random() * 2);          // 2 or 3 frames out
+  const out = (right ? [1, 2, 3] : [3, 2, 1]).slice(0, depth);
+  const seq = out.concat(out.slice(0, -1).reverse(), [0]);   // out and back to center
+  let i = 0;
+  showIdleFrame(seq[0]);
+  const step = setInterval(() => {
+    i++;
+    if (i < seq.length) { showIdleFrame(seq[i]); }
+    else { clearInterval(step); showIdleFrame(0); glancing = false; }
+  }, 450);
+}
+showIdleFrame(0);
+setInterval(() => { if (!glancing && Math.random() < 0.3) glance(); }, 2000);
+
+// --- state transition player with crossfade ---
+const seqNames = ['idle', 'listening', 'thinking', 'loading', 'replying', 'idle_sleep_f0', 'error'];
+const cache = {};
+function renderState(name) {
+  if (!cache[name]) {
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c2 = cv.getContext('2d');
+    prep(c2); draws[name](c2);
+    cache[name] = cv;
+  }
+  return cache[name];
+}
+const stateCv = document.getElementById('stateAnim');
+const sctx = stateCv.getContext('2d');
+const label = document.getElementById('stateLabel');
+const pauseBtn = document.getElementById('pauseBtn');
+let paused = false;
+pauseBtn.onclick = () => { paused = !paused; pauseBtn.innerHTML = paused ? '&#9654; Play' : '&#10074;&#10074; Pause'; };
+const HOLD = 1100;
+let idx = 0;
+function loop() {
+  if (!paused) {
+    const cur = seqNames[idx];
+    label.textContent = cur;
+    sctx.drawImage(renderState(cur), 0, 0);
+    idx = (idx + 1) % seqNames.length;
+  }
+}
+sctx.drawImage(renderState(seqNames[0]), 0, 0);
+setInterval(loop, HOLD);
+loop();
+</script>
+</body>
+</html>
